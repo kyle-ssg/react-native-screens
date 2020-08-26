@@ -1,21 +1,21 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import {
-  StackRouter,
-  SceneView,
-  StackActions,
-  createNavigator,
-} from 'react-navigation';
-import { HeaderBackButton } from 'react-navigation-stack';
-import {
-  ScreenStack,
   Screen,
-  ScreenStackHeaderConfig,
+  ScreenStack,
   ScreenStackHeaderBackButtonImage,
+  ScreenStackHeaderCenterView,
+  ScreenStackHeaderConfig,
   ScreenStackHeaderLeftView,
   ScreenStackHeaderRightView,
-  ScreenStackHeaderCenterView,
 } from 'react-native-screens';
+import {
+  createNavigator,
+  SceneView,
+  StackActions,
+  StackRouter,
+} from 'react-navigation';
+import { HeaderBackButton } from 'react-navigation-stack';
 
 function renderComponentOrThunk(componentOrThunk, props) {
   if (typeof componentOrThunk === 'function') {
@@ -27,7 +27,7 @@ function renderComponentOrThunk(componentOrThunk, props) {
 const REMOVE_ACTION = 'NativeStackNavigator/REMOVE';
 
 class StackView extends React.Component {
-  _removeScene = route => {
+  _removeScene = (route) => {
     this.props.navigation.dispatch({
       type: REMOVE_ACTION,
       immediate: true,
@@ -49,7 +49,8 @@ class StackView extends React.Component {
 
   _onFinishTransitioning = () => {
     const { routes } = this.props.navigation.state;
-    let lastRoute = routes && routes.length && routes[routes.length - 1];
+    const lastRoute = routes?.length && routes[routes.length - 1];
+
     if (lastRoute) {
       this.props.navigation.dispatch(
         StackActions.completeTransition({
@@ -77,6 +78,8 @@ class StackView extends React.Component {
       headerLargeTitleStyle,
       translucent,
       hideShadow,
+      headerTopInsetEnabled = true,
+      direction,
     } = options;
 
     const scene = {
@@ -90,7 +93,8 @@ class StackView extends React.Component {
       translucent: translucent === undefined ? false : translucent,
       title,
       titleFontFamily: headerTitleStyle && headerTitleStyle.fontFamily,
-      titleColor: headerTintColor,
+      titleColor:
+        (headerTitleStyle && headerTitleStyle.color) || headerTintColor,
       titleFontSize: headerTitleStyle && headerTitleStyle.fontSize,
       backTitle: headerBackTitleVisible === false ? '' : headerBackTitle,
       backTitleFontFamily:
@@ -104,6 +108,8 @@ class StackView extends React.Component {
         headerLargeTitleStyle && headerLargeTitleStyle.fontSize,
       largeTitleColor: headerLargeTitleStyle && headerLargeTitleStyle.color,
       hideShadow,
+      headerTopInsetEnabled,
+      direction,
     };
 
     const hasHeader = headerMode !== 'none' && options.header !== null;
@@ -113,6 +119,7 @@ class StackView extends React.Component {
 
     if (headerStyle !== undefined) {
       headerOptions.backgroundColor = headerStyle.backgroundColor;
+      headerOptions.blurEffect = headerStyle.blurEffect;
     }
 
     const children = [];
@@ -213,13 +220,22 @@ class StackView extends React.Component {
         style={[StyleSheet.absoluteFill, options.cardStyle]}
         stackAnimation={stackAnimation}
         stackPresentation={stackPresentation}
+        replaceAnimation={
+          options.replaceAnimation === undefined
+            ? 'pop'
+            : options.replaceAnimation
+        }
         pointerEvents={
           index === this.props.navigation.state.routes.length - 1
             ? 'auto'
             : 'none'
         }
         gestureEnabled={
-          options.gestureEnabled === undefined ? true : options.gestureEnabled
+          Platform.OS === 'android'
+            ? false
+            : options.gestureEnabled === undefined
+            ? true
+            : options.gestureEnabled
         }
         onAppear={() => this._onAppear(route, descriptor)}
         onDismissed={() => this._removeScene(route)}>
@@ -268,7 +284,7 @@ function createStackNavigator(routeConfigMap, stackConfig = {}) {
       const { key, immediate } = action;
       let backRouteIndex = state.index;
       if (key) {
-        const backRoute = state.routes.find(route => route.key === key);
+        const backRoute = state.routes.find((route) => route.key === key);
         backRouteIndex = state.routes.indexOf(backRoute);
       }
 

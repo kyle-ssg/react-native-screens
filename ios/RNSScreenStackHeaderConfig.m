@@ -8,6 +8,7 @@
 #import <React/RCTImageLoader.h>
 #import <React/RCTImageView.h>
 #import <React/RCTImageSource.h>
+#import <React/RCTFont.h>
 
 // Some RN private method hacking below. Couldn't figure out better way to access image data
 // of a given RCTImageView. See more comments in the code section processing SubviewTypeBackButton
@@ -118,9 +119,14 @@
 + (void)setAnimatedConfig:(UIViewController *)vc withConfig:(RNSScreenStackHeaderConfig *)config
 {
   UINavigationBar *navbar = ((UINavigationController *)vc.parentViewController).navigationBar;
+  // It is workaround for loading custom back icon when transitioning from a screen without header to the screen which has one.
+  // This action fails when navigating to the screen with header for the second time and loads default back button.
+  // It looks like changing the tint color of navbar triggers an update of the items belonging to it and it seems to load the custom back image
+  // so we change the tint color's alpha by a very small amount and then set it to the one it should have.  
+  [navbar setTintColor:[config.color colorWithAlphaComponent:CGColorGetAlpha(config.color.CGColor) - 0.01]];
   [navbar setTintColor:config.color];
 
-#ifdef __IPHONE_13_0
+#if defined(__IPHONE_13_0) && TARGET_OS_IOS
   if (@available(iOS 13.0, *)) {
     // font customized on the navigation item level, so nothing to do here
   } else
@@ -146,30 +152,32 @@
         attrs[NSForegroundColorAttributeName] = config.titleColor;
       }
 
-      CGFloat size = config.titleFontSize ? [config.titleFontSize floatValue] : 17;
+      NSNumber *size = config.titleFontSize ?: @17;
       if (config.titleFontFamily) {
-        attrs[NSFontAttributeName] = [UIFont fontWithName:config.titleFontFamily size:size];
+        attrs[NSFontAttributeName] = [RCTFont updateFont:nil withFamily:config.titleFontFamily size:size weight:nil style:nil variant:nil scaleMultiplier:1.0];
       } else {
-        attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:size];
+        attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:[size floatValue]];
       }
       [navbar setTitleTextAttributes:attrs];
     }
 
+#if (TARGET_OS_IOS)
     if (@available(iOS 11.0, *)) {
       if (config.largeTitle && (config.largeTitleFontFamily || config.largeTitleFontSize || config.largeTitleColor || config.titleColor)) {
         NSMutableDictionary *largeAttrs = [NSMutableDictionary new];
         if (config.largeTitleColor || config.titleColor) {
           largeAttrs[NSForegroundColorAttributeName] = config.largeTitleColor ? config.largeTitleColor : config.titleColor;
         }
-        CGFloat largeSize = config.largeTitleFontSize ? [config.largeTitleFontSize floatValue] : 34;
+        NSNumber *largeSize = config.largeTitleFontSize ?: @34;
         if (config.largeTitleFontFamily) {
-          largeAttrs[NSFontAttributeName] = [UIFont fontWithName:config.largeTitleFontFamily size:largeSize];
+          largeAttrs[NSFontAttributeName] = [RCTFont updateFont:nil withFamily:config.largeTitleFontFamily size:largeSize weight:nil style:nil variant:nil scaleMultiplier:1.0];
         } else {
-          largeAttrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:largeSize];
+          largeAttrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:[largeSize floatValue]];
         }
         [navbar setLargeTitleTextAttributes:largeAttrs];
       }
     }
+#endif
   }
 }
 
@@ -238,7 +246,9 @@
             // in order for new back button image to be loaded we need to trigger another change
             // in back button props that'd make UIKit redraw the button. Otherwise the changes are
             // not reflected. Here we change back button visibility which is then immediately restored
+#if (TARGET_OS_IOS)
             vc.navigationItem.hidesBackButton = YES;
+#endif
             [config updateViewControllerIfNeeded];
           }];
         }
@@ -256,7 +266,7 @@
   [self updateViewController:vc withConfig:config animated:animated];
 }
 
-#ifdef __IPHONE_13_0
+#if defined(__IPHONE_13_0) && TARGET_OS_IOS
 + (UINavigationBarAppearance*)buildAppearance:(UIViewController *)vc withConfig:(RNSScreenStackHeaderConfig *)config
 {
   UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
@@ -265,21 +275,16 @@
     // transparent background color
     [appearance configureWithTransparentBackground];
   } else {
-    // non-transparent background or default background
-    if (config.translucent) {
-      [appearance configureWithDefaultBackground];
-    } else {
-      [appearance configureWithOpaqueBackground];
-    }
-
-    // set background color if specified
-    if (config.backgroundColor) {
-      appearance.backgroundColor = config.backgroundColor;
-    }
+    [appearance configureWithOpaqueBackground];
+  }
+  
+  // set background color if specified
+  if (config.backgroundColor) {
+    appearance.backgroundColor = config.backgroundColor;
   }
 
-  if (config.backgroundColor && CGColorGetAlpha(config.backgroundColor.CGColor) == 0.) {
-    appearance.backgroundColor = config.backgroundColor;
+  if (config.blurEffect) {
+    appearance.backgroundEffect = [UIBlurEffect effectWithStyle:config.blurEffect];
   }
 
   if (config.hideShadow) {
@@ -293,11 +298,11 @@
       attrs[NSForegroundColorAttributeName] = config.titleColor;
     }
 
-    CGFloat size = config.titleFontSize ? [config.titleFontSize floatValue] : 17;
+    NSNumber *size = config.titleFontSize ?: @17;
     if (config.titleFontFamily) {
-      attrs[NSFontAttributeName] = [UIFont fontWithName:config.titleFontFamily size:size];
+      attrs[NSFontAttributeName] = [RCTFont updateFont:nil withFamily:config.titleFontFamily size:size weight:nil style:nil variant:nil scaleMultiplier:1.0];
     } else {
-      attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:size];
+      attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:[size floatValue]];
     }
     appearance.titleTextAttributes = attrs;
   }
@@ -309,11 +314,11 @@
       largeAttrs[NSForegroundColorAttributeName] = config.largeTitleColor ? config.largeTitleColor : config.titleColor;
     }
 
-    CGFloat largeSize = config.largeTitleFontSize ? [config.largeTitleFontSize floatValue] : 34;
+    NSNumber *largeSize = config.largeTitleFontSize ?: @34;
     if (config.largeTitleFontFamily) {
-      largeAttrs[NSFontAttributeName] = [UIFont fontWithName:config.largeTitleFontFamily size:largeSize];
+      largeAttrs[NSFontAttributeName] = [RCTFont updateFont:nil withFamily:config.largeTitleFontFamily size:largeSize weight:nil style:nil variant:nil scaleMultiplier:1.0];
     } else {
-      largeAttrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:largeSize];
+      largeAttrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:[largeSize floatValue]];
     }
 
     appearance.largeTitleTextAttributes = largeAttrs;
@@ -354,21 +359,27 @@
   if (shouldHide) {
     return;
   }
+  
+  if (config.direction == UISemanticContentAttributeForceLeftToRight || config.direction == UISemanticContentAttributeForceRightToLeft) {
+    navctr.view.semanticContentAttribute = config.direction;
+    navctr.navigationBar.semanticContentAttribute = config.direction;
+  }
 
   navitem.title = config.title;
-  if (config.backTitle != nil) {
+#if (TARGET_OS_IOS)
+  if (config.backTitle != nil || config.backTitleFontFamily || config.backTitleFontSize) {
     prevItem.backBarButtonItem = [[UIBarButtonItem alloc]
-                                  initWithTitle:config.backTitle
+                                  initWithTitle:config.backTitle ?: prevItem.title
                                   style:UIBarButtonItemStylePlain
                                   target:nil
                                   action:nil];
     if (config.backTitleFontFamily || config.backTitleFontSize) {
       NSMutableDictionary *attrs = [NSMutableDictionary new];
-      CGFloat size = config.backTitleFontSize ? [config.backTitleFontSize floatValue] : 17;
+      NSNumber *size = config.backTitleFontSize ?: @17;
       if (config.backTitleFontFamily) {
-        attrs[NSFontAttributeName] = [UIFont fontWithName:config.backTitleFontFamily size:size];
+        attrs[NSFontAttributeName] = [RCTFont updateFont:nil withFamily:config.backTitleFontFamily size:size weight:nil style:nil variant:nil scaleMultiplier:1.0];
       } else {
-        attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:size];
+        attrs[NSFontAttributeName] = [UIFont boldSystemFontOfSize:[size floatValue]];
       }
       [self setTitleAttibutes:attrs forButton:prevItem.backBarButtonItem];
     }
@@ -382,7 +393,9 @@
     }
     navitem.largeTitleDisplayMode = config.largeTitle ? UINavigationItemLargeTitleDisplayModeAlways : UINavigationItemLargeTitleDisplayModeNever;
   }
-#ifdef __IPHONE_13_0
+#endif
+
+#if defined(__IPHONE_13_0) && TARGET_OS_IOS
   if (@available(iOS 13.0, *)) {
     UINavigationBarAppearance *appearance = [self buildAppearance:vc withConfig:config];
     navitem.standardAppearance = appearance;
@@ -393,12 +406,13 @@
       scrollEdgeAppearance.backgroundColor = config.largeTitleBackgroundColor;
     }
     if (config.largeTitleHideShadow) {
-        scrollEdgeAppearance.shadowColor = nil;
+      scrollEdgeAppearance.shadowColor = nil;
     }
     navitem.scrollEdgeAppearance = scrollEdgeAppearance;
   } else
 #endif
   {
+#if (TARGET_OS_IOS)
     // updating backIndicatotImage does not work when called during transition. On iOS pre 13 we need
     // to update it before the navigation starts.
     UIImage *backButtonImage = [self loadBackButtonImageInViewController:vc withConfig:config];
@@ -409,14 +423,20 @@
       navctr.navigationBar.backIndicatorImage = nil;
       navctr.navigationBar.backIndicatorTransitionMaskImage = nil;
     }
+#endif
   }
+#if (TARGET_OS_IOS)
   navitem.hidesBackButton = config.hideBackButton;
+#endif
   navitem.leftBarButtonItem = nil;
   navitem.rightBarButtonItem = nil;
   navitem.titleView = nil;
   for (RNSScreenStackHeaderSubview *subview in config.reactSubviews) {
     switch (subview.type) {
       case RNSScreenStackHeaderSubviewTypeLeft: {
+#if (TARGET_OS_IOS)
+        navitem.leftItemsSupplementBackButton = config.backButtonInCustomView;
+#endif
         UIBarButtonItem *buttonItem = [[UIBarButtonItem alloc] initWithCustomView:subview];
         navitem.leftBarButtonItem = buttonItem;
         break;
@@ -482,9 +502,11 @@ RCT_EXPORT_VIEW_PROPERTY(titleFontSize, NSNumber)
 RCT_EXPORT_VIEW_PROPERTY(titleColor, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(backTitle, NSString)
 RCT_EXPORT_VIEW_PROPERTY(backTitleFontFamily, NSString)
-RCT_EXPORT_VIEW_PROPERTY(backTitleFontSize, NSString)
+RCT_EXPORT_VIEW_PROPERTY(backTitleFontSize, NSNumber)
 RCT_EXPORT_VIEW_PROPERTY(backgroundColor, UIColor)
+RCT_EXPORT_VIEW_PROPERTY(blurEffect, UIBlurEffectStyle)
 RCT_EXPORT_VIEW_PROPERTY(color, UIColor)
+RCT_EXPORT_VIEW_PROPERTY(direction, UISemanticContentAttribute)
 RCT_EXPORT_VIEW_PROPERTY(largeTitle, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(largeTitleFontFamily, NSString)
 RCT_EXPORT_VIEW_PROPERTY(largeTitleFontSize, NSNumber)
@@ -493,6 +515,7 @@ RCT_EXPORT_VIEW_PROPERTY(largeTitleBackgroundColor, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(largeTitleHideShadow, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(hideBackButton, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(hideShadow, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(backButtonInCustomView, BOOL)
 // `hidden` is an UIView property, we need to use different name internally
 RCT_REMAP_VIEW_PROPERTY(hidden, hide, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(translucent, BOOL)
@@ -500,6 +523,46 @@ RCT_EXPORT_VIEW_PROPERTY(translucent, BOOL)
 @end
 
 @implementation RCTConvert (RNSScreenStackHeader)
+
++ (NSMutableDictionary *)blurEffectsForIOSVersion
+{
+  NSMutableDictionary *blurEffects = [NSMutableDictionary new];
+  [blurEffects addEntriesFromDictionary:@{
+    @"extraLight": @(UIBlurEffectStyleExtraLight),
+    @"light": @(UIBlurEffectStyleLight),
+    @"dark": @(UIBlurEffectStyleDark),
+  }];
+  
+  if (@available(iOS 10.0, *)) {
+    [blurEffects addEntriesFromDictionary:@{
+      @"regular": @(UIBlurEffectStyleRegular),
+      @"prominent": @(UIBlurEffectStyleProminent),
+
+    }];
+  }
+#if defined(__IPHONE_13_0) && TARGET_OS_IOS
+  if (@available(iOS 13.0, *)) {
+    [blurEffects addEntriesFromDictionary:@{
+      @"systemUltraThinMaterial": @(UIBlurEffectStyleSystemUltraThinMaterial),
+      @"systemThinMaterial": @(UIBlurEffectStyleSystemThinMaterial),
+      @"systemMaterial": @(UIBlurEffectStyleSystemMaterial),
+      @"systemThickMaterial": @(UIBlurEffectStyleSystemThickMaterial),
+      @"systemChromeMaterial": @(UIBlurEffectStyleSystemChromeMaterial),
+      @"systemUltraThinMaterialLight": @(UIBlurEffectStyleSystemUltraThinMaterialLight),
+      @"systemThinMaterialLight": @(UIBlurEffectStyleSystemThinMaterialLight),
+      @"systemMaterialLight": @(UIBlurEffectStyleSystemMaterialLight),
+      @"systemThickMaterialLight": @(UIBlurEffectStyleSystemThickMaterialLight),
+      @"systemChromeMaterialLight": @(UIBlurEffectStyleSystemChromeMaterialLight),
+      @"systemUltraThinMaterialDark": @(UIBlurEffectStyleSystemUltraThinMaterialDark),
+      @"systemThinMaterialDark": @(UIBlurEffectStyleSystemThinMaterialDark),
+      @"systemMaterialDark": @(UIBlurEffectStyleSystemMaterialDark),
+      @"systemThickMaterialDark": @(UIBlurEffectStyleSystemThickMaterialDark),
+      @"systemChromeMaterialDark": @(UIBlurEffectStyleSystemChromeMaterialDark),
+    }];
+  }
+#endif
+  return blurEffects;
+}
 
 RCT_ENUM_CONVERTER(RNSScreenStackHeaderSubviewType, (@{
    @"back": @(RNSScreenStackHeaderSubviewTypeBackButton),
@@ -509,6 +572,13 @@ RCT_ENUM_CONVERTER(RNSScreenStackHeaderSubviewType, (@{
    @"center": @(RNSScreenStackHeaderSubviewTypeCenter),
    }), RNSScreenStackHeaderSubviewTypeTitle, integerValue)
 
+RCT_ENUM_CONVERTER(UISemanticContentAttribute, (@{
+   @"ltr": @(UISemanticContentAttributeForceLeftToRight),
+   @"rtl": @(UISemanticContentAttributeForceRightToLeft),
+   }), UISemanticContentAttributeUnspecified, integerValue)
+
+RCT_ENUM_CONVERTER(UIBlurEffectStyle, ([self blurEffectsForIOSVersion]), UIBlurEffectStyleExtraLight, integerValue)
+  
 @end
 
 @implementation RNSScreenStackHeaderSubviewManager

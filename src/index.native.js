@@ -1,11 +1,11 @@
 import React from 'react';
 import {
   Animated,
-  requireNativeComponent,
-  View,
-  UIManager,
   Image,
+  requireNativeComponent,
   StyleSheet,
+  UIManager,
+  View,
 } from 'react-native';
 import { version } from 'react-native/Libraries/Core/ReactNativeVersion';
 
@@ -13,7 +13,7 @@ let ENABLE_SCREENS = false;
 
 // UIManager[`${moduleName}`] is deprecated in RN 0.58 and `getViewManagerConfig` is added.
 // We can remove this when we drop support for RN < 0.58.
-const getViewManagerConfigCompat = name =>
+const getViewManagerConfigCompat = (name) =>
   typeof UIManager.getViewManagerConfig !== 'undefined'
     ? UIManager.getViewManagerConfig(name)
     : UIManager[name];
@@ -85,10 +85,12 @@ class Screen extends React.Component {
   setNativeProps(props) {
     this._ref.setNativeProps(props);
   }
-  setRef = ref => {
+
+  setRef = (ref) => {
     this._ref = ref;
     this.props.onComponentRef && this.props.onComponentRef(ref);
   };
+
   render() {
     if (!ENABLE_SCREENS) {
       // Filter out active prop in this case because it is unused and
@@ -147,7 +149,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const ScreenStackHeaderBackButtonImage = props => (
+const ScreenStackHeaderBackButtonImage = (props) => (
   <ScreensNativeModules.NativeScreenStackHeaderSubview
     type="back"
     style={styles.headerSubview}>
@@ -155,7 +157,7 @@ const ScreenStackHeaderBackButtonImage = props => (
   </ScreensNativeModules.NativeScreenStackHeaderSubview>
 );
 
-const ScreenStackHeaderRightView = props => (
+const ScreenStackHeaderRightView = (props) => (
   <ScreensNativeModules.NativeScreenStackHeaderSubview
     {...props}
     type="right"
@@ -163,7 +165,7 @@ const ScreenStackHeaderRightView = props => (
   />
 );
 
-const ScreenStackHeaderLeftView = props => (
+const ScreenStackHeaderLeftView = (props) => (
   <ScreensNativeModules.NativeScreenStackHeaderSubview
     {...props}
     type="left"
@@ -171,7 +173,7 @@ const ScreenStackHeaderLeftView = props => (
   />
 );
 
-const ScreenStackHeaderCenterView = props => (
+const ScreenStackHeaderCenterView = (props) => (
   <ScreensNativeModules.NativeScreenStackHeaderSubview
     {...props}
     type="center"
